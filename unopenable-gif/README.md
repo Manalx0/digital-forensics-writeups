@@ -1,159 +1,172 @@
-# Write-up — unopenable.gif (CTF/DF)
+# Write-up — unopenable.gif (CTF / Digital Forensics)
+
+This document presents a complete forensic analysis of the **unopenable.gif** challenge.
+The objective was not only to recover the flag, but to understand why the file failed to open,
+verify its internal structure, and restore it using minimal, forensic-safe modifications.
+
+---
 
 ## TL;DR
+The challenge involved a GIF file that could not be opened due to missing header bytes.
+After restoring the correct GIF header and analyzing the animation frames, the file was found
+to contain Base64-encoded fragments distributed across multiple frames.
+Combining and decoding these fragments revealed the final flag:
 
-The challenge started with a broken GIF file that wouldn’t open because its header was missing. After fixing the header and exploring the frames, the GIF turned out to have five frames: one black frame, three frames with Base64-encoded text, and a final frame saying “decode it.” When the three text fragments were combined and decoded, they revealed the final flag:
-
-**`flag{g1f_or_j1m}`**
+**flag{g1f_or_j1m}**
 
 ---
 
 ## Environment & Tools
-
-* OS: Kali Linux
-* Tools used: `file`, `hexdump`, `dd`, `convert`, `gifsicle`, `base64`
-
----
-
-## Step 1: First Look
-
-When I first ran `file` on `unopenable.gif`, it just said **data** — meaning the header was corrupted or missing.
-
-So I dumped the first bytes:
-
-```bash
-hexdump -C unopenable.gif | head -n 10
-```
-
-Instead of seeing `GIF89a`, the first bytes were:
-
-```
-39 61 f4 01 f4 01 ...
-```
-
-Only the last two bytes (`39 61` → `9a`) from the header were left. The first four were gone.
-
-At that point, I suspected the file was still a GIF — just with its magic bytes removed.
+- OS: Kali Linux
+- Tools:
+  - `file`
+  - `hexdump`
+  - `dd`
+  - `convert` (ImageMagick)
+  - `gifsicle`
+  - `base64`
 
 ---
 
-## Step 2: Fixing the Header
+## Initial Assessment
+The problem was approached as a **file format integrity issue**, rather than a rendering or viewer problem.
+The first step was to determine whether the file was still identifiable at the binary level.
 
-I created a safe copy to work on:
-
-```bash
-cp unopenable.gif fixed.gif
-```
-
-Then wrote the correct GIF header (`GIF89a`) to the beginning:
-
-```bash
-printf '\x47\x49\x46\x38\x39\x61' | dd of=fixed.gif bs=1 conv=notrunc
-```
-
-After checking again:
-
-```bash
-file fixed.gif
-```
-
-It finally showed **GIF image data, 500 x 500**, confirming the structure was intact.
-
----
-
-## Step 3: Opening and Exploring
-
-Opening the file revealed an **animated GIF** with five frames:
-
-1. A completely black frame (blank intro)
-2. A frame with Base64 text fragment #1
-3. A frame with Base64 text fragment #2
-4. A frame with Base64 text fragment #3
-5. A final frame that says **“decode it”**
-
-The design clearly hinted at the next step — combine and decode the text.
-
----
-
-## Step 4: Extracting the Frames
-
-I extracted each frame using ImageMagick:
-
-```bash
-mkdir frames && convert fixed.gif frames/frame-%02d.png
-```
-
-After extraction, I had:
-
-```
-frame-00.png  (black)
-frame-01.png  (ZmxhZ3tn)
-frame-02.png  (MWZfb3)
-frame-03.png  (JfajFmfQ==)
-frame-04.png  (decode it)
-```
-
----
-
-## Step 5: Combining and Decoding
-
-The three meaningful frames contained:
-
-```
-ZmxhZ3tn , MWZfb3 , JfajFmfQ==
-```
-
-I removed the commas/spaces and joined them:
-
-```
-ZmxhZ3tnMWZfb3JfajFmfQ==
-```
-
-Then decoded it:
-
-```bash
-echo 'ZmxhZ3tnMWZfb3JfajFmfQ==' | base64 -d
-```
+~~~bash
+file unopenable.gif
+~~~
 
 Output:
+~~~
+data
+~~~
 
-```
+This result indicates that the file’s magic bytes or header were missing or corrupted.
+
+---
+
+## Header Inspection
+To confirm this, the beginning of the file was examined:
+
+~~~bash
+hexdump -C unopenable.gif | head -n 10
+~~~
+
+The output began with:
+~~~
+39 61 f4 01 f4 01 ...
+~~~
+
+A valid GIF file must begin with one of the following headers:
+- `GIF87a`
+- `GIF89a`
+
+In this case, only the final two bytes of the header (`39 61` → `9a`) were present,
+while the first four bytes were missing.
+This confirmed that the file was still structurally a GIF, but its identifying header had been partially removed.
+
+---
+
+## Restoring the GIF Header
+To preserve forensic integrity, all modifications were performed on a copy of the original file:
+
+~~~bash
+cp unopenable.gif fixed.gif
+~~~
+
+Because the file was later confirmed to be animated, the `GIF89a` header was restored:
+
+~~~bash
+printf '\x47\x49\x46\x38\x39\x61' | dd of=fixed.gif bs=1 conv=notrunc
+~~~
+
+Verification after restoration:
+
+~~~bash
+file fixed.gif
+~~~
+
+Result:
+~~~
+GIF image data, 500 x 500
+~~~
+
+This confirmed that the file format had been successfully repaired.
+
+---
+
+## Frame Analysis
+Opening the repaired file revealed an **animated GIF** consisting of five frames:
+
+1. A fully black frame (introductory frame)
+2. A frame containing a Base64 text fragment
+3. A frame containing a Base64 text fragment
+4. A frame containing a Base64 text fragment
+5. A final frame displaying the text **“decode it”**
+
+The final frame served as an explicit instruction for the next step.
+
+---
+
+## Extracting Frames
+Each frame was extracted for individual analysis:
+
+~~~bash
+mkdir frames
+convert fixed.gif frames/frame-%02d.png
+~~~
+
+Extracted content:
+- `frame-00.png` → black frame
+- `frame-01.png` → `ZmxhZ3tn`
+- `frame-02.png` → `MWZfb3`
+- `frame-03.png` → `JfajFmfQ==`
+- `frame-04.png` → `decode it`
+
+---
+
+## Decoding the Hidden Data
+The three Base64 fragments were concatenated in order:
+
+~~~
+ZmxhZ3tnMWZfb3JfajFmfQ==
+~~~
+
+The combined string was decoded using:
+
+~~~bash
+echo 'ZmxhZ3tnMWZfb3JfajFmfQ==' | base64 -d
+~~~
+
+Output:
+~~~
 flag{g1f_or_j1m}
-```
-
-The fifth frame’s message — “decode it” — was literally the instruction for this step.
+~~~
 
 ---
 
-## Step 6: What I Learned
-
-* Always check the **header**; a missing header is a common beginner CTF trick.
-* **GIF headers** start with `GIF87a` or `GIF89a`.
-* A single `dd` command can restore missing magic bytes.
-* Animated GIFs can hide multi-part clues in separate frames.
-* Base64 encoding often hides readable text in plain sight.
+## Key Takeaways
+- File header validation should be an early step in file-based forensic analysis
+- Magic bytes are critical for file type identification
+- Minimal, controlled modification using `dd` is sufficient to restore damaged headers
+- Animated GIFs can distribute hidden data across multiple frames
+- Base64 encoding is commonly used to conceal readable data in CTF challenges
 
 ---
 
-## Step 7: Useful Commands Summary
-
-```bash
-cp unopenable.gif work-unopenable.gif
-file work-unopenable.gif
-hexdump -C work-unopenable.gif | head -n 10
+## Command Summary
+~~~bash
+cp unopenable.gif fixed.gif
+file unopenable.gif
+hexdump -C unopenable.gif | head -n 10
 printf '\x47\x49\x46\x38\x39\x61' | dd of=fixed.gif bs=1 conv=notrunc
 convert fixed.gif frames/frame-%02d.png
 echo 'ZmxhZ3tnMWZfb3JfajFmfQ==' | base64 -d
-```
+~~~
 
 ---
 
 ## Final Flag
-
-```
+~~~
 flag{g1f_or_j1m}
-```
-
----
-
-This challenge was a great intro to digital forensics concepts — simple but clever. It taught me how missing headers can be repaired, how to inspect GIF structures, and how even basic encoding like Base64 can be used creatively to hide a flag.
+~~`
