@@ -1,50 +1,38 @@
 # Digital Forensics Write-ups
 
-This repository contains my digital forensics CTF write-ups, with a focus on understanding the underlying concepts rather than relying on shortcuts.
+This repository contains my digital forensics CTF write-ups, focusing on a structured DFIR-oriented analysis approach.
 
 ---
 
 ## Methodology
 
-For each challenge, I follow a structured approach:
+For each challenge, I follow a consistent workflow:
 
-- Identify the type and structure of the evidence (disk image, memory, file, etc.)
-- Determine the correct analysis starting point (e.g., partition offsets)
-- Use appropriate tools based on the scenario (not limited to a single tool)
-- Navigate data at a low level when necessary (offsets, inodes, raw artifacts)
+- Identify the structure of the evidence (disk image, file, etc.)
+- Determine the correct starting point (e.g., partition offsets)
+- Use appropriate tools depending on the scenario
+- Analyze data at a low level when needed (offsets, inodes, artifacts)
 - Validate findings before reaching conclusions
-
----
-
-## Tools & Concepts
-
-Depending on the challenge, this repository may involve:
-
-- Sleuth Kit (`mmls`, `fls`, `icat`)
-- Linux utilities
-- File format analysis
-- Encoding and decoding techniques
-- Disk and memory forensics concepts
 
 ---
 
 ## Write-ups
 
-- [Forensics Git 0](./forensics-git-0/README.md)
+- [Forensics Git 0](./Forensics-Git-0/README.md)
+- [mr-bin](./mr-bin/README.md)
+- [unopenable-gif](./unopenable-gif/README.md)
 
 ---
 
-## Purpose
+## Focus
 
-The goal of this repository is to document my learning process and build a solid foundation in digital forensics and DFIR practices.
-
-Each write-up reflects:
-- Step-by-step analysis
-- Reasoning behind decisions
-- Practical use of forensic tools
+- Disk forensics  
+- File system analysis  
+- Artifact-based investigation  
+- DFIR methodology  
 
 ---
 
 ## Notes
 
-This repository will grow over time as I solve more challenges and explore different areas within digital forensics.
+This repository reflects my ongoing learning in digital forensics and will continue to grow over time.
