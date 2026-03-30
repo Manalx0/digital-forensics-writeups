@@ -1,4 +1,3 @@
-# digital-forensics-writeups
 # Digital Forensics Write-ups
 
 This repository contains my digital forensics CTF write-ups, with a focus on understanding the underlying concepts rather than relying on shortcuts.
